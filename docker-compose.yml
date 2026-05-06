@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  dynamodb:
+    image: amazon/dynamodb-local
+    container_name: dynamodb-local
+    ports:
+      - "8012:8000"
+    command: "-jar DynamoDBLocal.jar -inMemory -sharedDb"
+    networks:
+      - rifas-net
+
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin
+    container_name: dynamodb-admin
+    ports:
+      - "8011:8001"
+    environment:
+      DYNAMO_ENDPOINT: http://dynamodb:8000
+      AWS_REGION: sa-east-1
+      AWS_ACCESS_KEY_ID: fake
+      AWS_SECRET_ACCESS_KEY: fake
+    depends_on:
+      - dynamodb
+    networks:
+      - rifas-net
+
+  api:
+    image: node:22
+    container_name: rifas-payments-api
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: sh -c "yarn install && npx serverless offline start --host 0.0.0.0"
+    ports:
+      - "3030:3000"
+    environment:
+      AWS_REGION: sa-east-1
+      AWS_ACCESS_KEY_ID: fake
+      AWS_SECRET_ACCESS_KEY: fake
+      IS_OFFLINE: "true"
+      SERVERLESS_ACCESS_KEY: ${SERVERLESS_ACCESS_KEY}
+    depends_on:
+      - dynamodb
+    networks:
+      - rifas-net
+
+networks:
+  rifas-net:
+    driver: bridge

@@ -1,0 +1,117 @@
+service: rifas-payments
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: sa-east-1
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:Query
+          Resource:
+            - Fn::GetAtt: [PaymentsTable, Arn]
+            - Fn::Join:
+                - "/"
+                - - Fn::GetAtt: [PaymentsTable, Arn]
+                  - "index/*"
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource:
+            - ${env:DB_SECRET_ARN, 'arn:aws:secretsmanager:sa-east-1:000000000000:secret:placeholder'}
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource:
+            - Fn::GetAtt: [RaffleNumbersDLQ, Arn]
+
+  environment:
+    PAYMENTS_TABLE: payments-generated-${sls:stage}
+    DB_HOST: ${env:DB_HOST, ''}
+    DB_PORT: ${env:DB_PORT, '5432'}
+    DB_SECRET_ARN: ${env:DB_SECRET_ARN, ''}
+    # Apenas usadas em local (IS_OFFLINE=true). Em prod ficam vazias e o pg.js le do Secrets Manager.
+    DB_USERNAME: ${env:DB_USERNAME, ''}
+    DB_PASSWORD: ${env:DB_PASSWORD, ''}
+
+functions:
+  generateQrCode:
+    handler: handlers/generate-qrcode.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /generate-qrcode
+
+  getPayment:
+    handler: handlers/get-payment.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /payments/{tenant}/{paymentId}
+
+  generateRaffleNumbers:
+    handler: handlers/generate-raffle-numbers.handler
+    timeout: 900
+    memorySize: 3008
+    reservedConcurrency: 10
+    vpc:
+      subnetIds:
+        - ${env:LAMBDA_SUBNET_ID_1, 'subnet-00000000'}
+        - ${env:LAMBDA_SUBNET_ID_2, 'subnet-00000000'}
+        - ${env:LAMBDA_SUBNET_ID_3, 'subnet-00000000'}
+      securityGroupIds:
+        - ${env:LAMBDA_SECURITY_GROUP_ID, 'sg-00000000'}
+    destinations:
+      onFailure:
+        arn:
+          Fn::GetAtt: [RaffleNumbersDLQ, Arn]
+        type: sqs
+
+plugins:
+  - serverless-offline
+
+resources:
+  Resources:
+    PaymentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: payments-generated-${sls:stage}
+        BillingMode: PAY_PER_REQUEST
+
+        AttributeDefinitions:
+          - AttributeName: paymentId
+            AttributeType: S
+          - AttributeName: entityType
+            AttributeType: S
+          - AttributeName: createdAtEpoch
+            AttributeType: N
+
+        KeySchema:
+          - AttributeName: paymentId
+            KeyType: HASH
+
+        GlobalSecondaryIndexes:
+          - IndexName: entityType-createdAt-index
+            KeySchema:
+              - AttributeName: entityType
+                KeyType: HASH
+              - AttributeName: createdAtEpoch
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+        TimeToLiveSpecification:
+          AttributeName: ttlEpoch
+          Enabled: true
+
+    RaffleNumbersDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: rifas-payments-failures-${sls:stage}
+        MessageRetentionPeriod: 1209600
