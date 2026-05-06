@@ -1,0 +1,72 @@
+name: 🚀 Deploy Lambdas (production) via Serverless Framework
+
+on:
+    workflow_dispatch:
+    push:
+        branches:
+            - main
+
+env:
+    AWS_REGION: sa-east-1
+    NODE_VERSION: "20"
+    SLS_STAGE: production
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        environment: main
+
+        steps:
+            - name: 📥 Checkout do repositório
+              uses: actions/checkout@v4
+
+            - name: 🟢 Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: yarn
+
+            - name: 📝 Notificação Discord - Início do Deploy
+              run: |
+                  curl -H "Content-Type: application/json" \
+                    -X POST \
+                    -d "{\"content\":\"🔨 Iniciando deploy rifas-payments PRODUCTION! (\`${GITHUB_SHA::7}\`)\"}" \
+                    ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+            - name: 📦 Instalar dependências
+              run: yarn install --frozen-lockfile
+
+            - name: 🔐 Configurar credenciais AWS
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ env.AWS_REGION }}
+
+            - name: 🚀 Serverless deploy
+              env:
+                  SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+                  DB_HOST: ${{ secrets.DB_HOST }}
+                  DB_PORT: ${{ secrets.DB_PORT }}
+                  DB_SECRET_ARN: ${{ secrets.DB_SECRET_ARN }}
+                  LAMBDA_SECURITY_GROUP_ID: ${{ secrets.LAMBDA_SECURITY_GROUP_ID }}
+                  LAMBDA_SUBNET_ID_1: ${{ secrets.LAMBDA_SUBNET_ID_1 }}
+                  LAMBDA_SUBNET_ID_2: ${{ secrets.LAMBDA_SUBNET_ID_2 }}
+                  LAMBDA_SUBNET_ID_3: ${{ secrets.LAMBDA_SUBNET_ID_3 }}
+              run: npx serverless deploy --stage ${{ env.SLS_STAGE }} --region ${{ env.AWS_REGION }}
+
+            - name: 📝 Notificação Discord - Deploy Finalizado
+              if: success()
+              run: |
+                  curl -H "Content-Type: application/json" \
+                    -X POST \
+                    -d "{\"content\":\"✅ Deploy rifas-payments PRODUCTION concluído! (\`${GITHUB_SHA::7}\`)\"}" \
+                    ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+            - name: 📝 Notificação Discord - Deploy Falhou
+              if: failure()
+              run: |
+                  curl -H "Content-Type: application/json" \
+                    -X POST \
+                    -d "{\"content\":\"❌ Deploy rifas-payments PRODUCTION falhou! (\`${GITHUB_SHA::7}\`)\"}" \
+                    ${{ secrets.DISCORD_WEBHOOK_URL }}
