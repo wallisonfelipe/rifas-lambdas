@@ -1,20 +1,24 @@
-name: 🚀 Deploy Lambdas (production) via Serverless Framework
+name: 🚀 Deploy Lambdas via Serverless Framework
 
 on:
     workflow_dispatch:
     push:
         branches:
             - main
+            - develop
 
 env:
     AWS_REGION: sa-east-1
     NODE_VERSION: "20"
-    SLS_STAGE: production
 
 jobs:
     deploy:
         runs-on: ubuntu-latest
-        environment: main
+        environment: ${{ github.ref_name == 'main' && 'main' || 'develop' }}
+
+        env:
+            SLS_STAGE: ${{ github.ref_name == 'main' && 'production' || 'dev' }}
+            ENV_LABEL: ${{ github.ref_name == 'main' && 'PRODUCTION' || 'DEVELOP' }}
 
         steps:
             - name: 📥 Checkout do repositório
@@ -30,7 +34,7 @@ jobs:
               run: |
                   curl -H "Content-Type: application/json" \
                     -X POST \
-                    -d "{\"content\":\"🔨 Iniciando deploy rifas-payments PRODUCTION! (\`${GITHUB_SHA::7}\`)\"}" \
+                    -d "{\"content\":\"🔨 Iniciando deploy rifas-payments ${ENV_LABEL}! (\`${GITHUB_SHA::7}\`)\"}" \
                     ${{ secrets.DISCORD_WEBHOOK_URL }}
 
             - name: 📦 Instalar dependências
@@ -60,7 +64,7 @@ jobs:
               run: |
                   curl -H "Content-Type: application/json" \
                     -X POST \
-                    -d "{\"content\":\"✅ Deploy rifas-payments PRODUCTION concluído! (\`${GITHUB_SHA::7}\`)\"}" \
+                    -d "{\"content\":\"✅ Deploy rifas-payments ${ENV_LABEL} concluído! (\`${GITHUB_SHA::7}\`)\"}" \
                     ${{ secrets.DISCORD_WEBHOOK_URL }}
 
             - name: 📝 Notificação Discord - Deploy Falhou
@@ -68,5 +72,5 @@ jobs:
               run: |
                   curl -H "Content-Type: application/json" \
                     -X POST \
-                    -d "{\"content\":\"❌ Deploy rifas-payments PRODUCTION falhou! (\`${GITHUB_SHA::7}\`)\"}" \
+                    -d "{\"content\":\"❌ Deploy rifas-payments ${ENV_LABEL} falhou! (\`${GITHUB_SHA::7}\`)\"}" \
                     ${{ secrets.DISCORD_WEBHOOK_URL }}
