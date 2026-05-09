@@ -1,8 +1,9 @@
 service: rifas-payments
+frameworkVersion: ~4.35.1
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs22.x
   region: sa-east-1
 
   iam:
