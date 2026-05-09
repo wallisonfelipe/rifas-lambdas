@@ -88,7 +88,7 @@ functions:
 
   webhookCodepay:
     handler: handlers/webhook-codepay.handler
-    timeout: 30
+    timeout: 25
     vpc: ${self:custom.relayVpc}
     events:
       - httpApi:
@@ -97,7 +97,7 @@ functions:
 
   webhookPagstar:
     handler: handlers/webhook-pagstar.handler
-    timeout: 30
+    timeout: 25
     vpc: ${self:custom.relayVpc}
     events:
       - httpApi:
@@ -106,7 +106,7 @@ functions:
 
   webhookPay2m:
     handler: handlers/webhook-pay2m.handler
-    timeout: 30
+    timeout: 25
     vpc: ${self:custom.relayVpc}
     events:
       - httpApi:
