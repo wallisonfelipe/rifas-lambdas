@@ -57,6 +57,11 @@ jobs:
                   LAMBDA_SUBNET_ID_1: ${{ secrets.LAMBDA_SUBNET_ID_1 }}
                   LAMBDA_SUBNET_ID_2: ${{ secrets.LAMBDA_SUBNET_ID_2 }}
                   LAMBDA_SUBNET_ID_3: ${{ secrets.LAMBDA_SUBNET_ID_3 }}
+                  RELAY_LAMBDA_SECURITY_GROUP_ID: ${{ secrets.RELAY_LAMBDA_SECURITY_GROUP_ID }}
+                  RELAY_LAMBDA_SUBNET_ID_1: ${{ secrets.RELAY_LAMBDA_SUBNET_ID_1 }}
+                  RELAY_LAMBDA_SUBNET_ID_2: ${{ secrets.RELAY_LAMBDA_SUBNET_ID_2 }}
+                  DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+                  MYIP_PASSWORD: ${{ secrets.MYIP_PASSWORD }}
               run: npx serverless deploy --stage ${{ env.SLS_STAGE }} --region ${{ env.AWS_REGION }}
 
             - name: 📝 Notificação Discord - Deploy Finalizado
