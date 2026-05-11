@@ -1,8 +1,9 @@
 service: rifas-payments
+frameworkVersion: ~4.35.1
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs22.x
   region: sa-east-1
 
   iam:
@@ -22,6 +23,14 @@ provider:
                   - "index/*"
         - Effect: Allow
           Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+          Resource:
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/users-table-${sls:stage}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/requests-timeline-table-${sls:stage}
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/request-logs-timeline-table-${sls:stage}
+        - Effect: Allow
+          Action:
             - secretsmanager:GetSecretValue
           Resource:
             - ${env:DB_SECRET_ARN, 'arn:aws:secretsmanager:sa-east-1:000000000000:secret:placeholder'}
@@ -33,6 +42,11 @@ provider:
 
   environment:
     PAYMENTS_TABLE: payments-generated-${sls:stage}
+    USERS_TABLE: users-table-${sls:stage}
+    REQUESTS_TABLE: requests-timeline-table-${sls:stage}
+    REQUEST_LOGS_TABLE: request-logs-timeline-table-${sls:stage}
+    DISCORD_WEBHOOK_URL: ${env:DISCORD_WEBHOOK_URL, ''}
+    MYIP_PASSWORD: ${env:MYIP_PASSWORD, ''}
     DB_HOST: ${env:DB_HOST, ''}
     DB_PORT: ${env:DB_PORT, '5432'}
     DB_SECRET_ARN: ${env:DB_SECRET_ARN, ''}
@@ -72,6 +86,59 @@ functions:
         arn:
           Fn::GetAtt: [RaffleNumbersDLQ, Arn]
         type: sqs
+
+  webhookCodepay:
+    handler: handlers/webhook-codepay.handler
+    timeout: 25
+    vpc: ${self:custom.relayVpc}
+    events:
+      - httpApi:
+          method: POST
+          path: /webhook/codepay/{pathUrl}
+
+  webhookPagstar:
+    handler: handlers/webhook-pagstar.handler
+    timeout: 25
+    vpc: ${self:custom.relayVpc}
+    events:
+      - httpApi:
+          method: POST
+          path: /webhook/pagstar/{pathUrl}
+
+  webhookPay2m:
+    handler: handlers/webhook-pay2m.handler
+    timeout: 25
+    vpc: ${self:custom.relayVpc}
+    events:
+      - httpApi:
+          method: POST
+          path: /webhook/pay2m/{pathUrl}
+
+  codepayCashout:
+    handler: handlers/codepay-cashout.handler
+    timeout: 15
+    vpc: ${self:custom.relayVpc}
+    events:
+      - httpApi:
+          method: POST
+          path: /codepay/cashout
+
+  myip:
+    handler: handlers/myip.handler
+    timeout: 10
+    vpc: ${self:custom.relayVpc}
+    events:
+      - httpApi:
+          method: GET
+          path: /myip
+
+custom:
+  relayVpc:
+    subnetIds:
+      - ${env:RELAY_LAMBDA_SUBNET_ID_1, 'subnet-00000000'}
+      - ${env:RELAY_LAMBDA_SUBNET_ID_2, 'subnet-00000000'}
+    securityGroupIds:
+      - ${env:RELAY_LAMBDA_SECURITY_GROUP_ID, 'sg-00000000'}
 
 plugins:
   - serverless-offline
