@@ -50,6 +50,7 @@ jobs:
             - name: 🚀 Serverless deploy
               env:
                   SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+                  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
                   DB_HOST: ${{ secrets.DB_HOST }}
                   DB_PORT: ${{ secrets.DB_PORT }}
                   DB_SECRET_ARN: ${{ secrets.DB_SECRET_ARN }}

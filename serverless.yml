@@ -26,9 +26,9 @@ provider:
             - dynamodb:GetItem
             - dynamodb:PutItem
           Resource:
-            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/users-table-${sls:stage}
-            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/requests-timeline-table-${sls:stage}
-            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/request-logs-timeline-table-${sls:stage}
+            - arn:aws:dynamodb:${aws:region}:${env:AWS_ACCOUNT_ID, '000000000000'}:table/users-table-${sls:stage}
+            - arn:aws:dynamodb:${aws:region}:${env:AWS_ACCOUNT_ID, '000000000000'}:table/requests-timeline-table-${sls:stage}
+            - arn:aws:dynamodb:${aws:region}:${env:AWS_ACCOUNT_ID, '000000000000'}:table/request-logs-timeline-table-${sls:stage}
         - Effect: Allow
           Action:
             - secretsmanager:GetSecretValue
@@ -74,6 +74,25 @@ functions:
     timeout: 900
     memorySize: 3008
     reservedConcurrency: 10
+    vpc:
+      subnetIds:
+        - ${env:LAMBDA_SUBNET_ID_1, 'subnet-00000000'}
+        - ${env:LAMBDA_SUBNET_ID_2, 'subnet-00000000'}
+        - ${env:LAMBDA_SUBNET_ID_3, 'subnet-00000000'}
+      securityGroupIds:
+        - ${env:LAMBDA_SECURITY_GROUP_ID, 'sg-00000000'}
+    destinations:
+      onFailure:
+        arn:
+          Fn::GetAtt: [RaffleNumbersDLQ, Arn]
+        type: sqs
+
+  generateReport:
+    handler: handlers/generate-report.handler
+    timeout: 900
+    memorySize: 2048
+    reservedConcurrency: 10
+    ephemeralStorageSize: 4096
     vpc:
       subnetIds:
         - ${env:LAMBDA_SUBNET_ID_1, 'subnet-00000000'}
