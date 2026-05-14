@@ -129,7 +129,9 @@ async function markBlockedNumbersLocked(client, table, raffleId, blockedNumbers)
 async function insertSuccessNotification(client, raffle) {
   await client.query(
     `INSERT INTO notifications (type, title, message, user_id, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+     VALUES ($1, $2, $3, $4,
+             (NOW() AT TIME ZONE 'America/Sao_Paulo'),
+             (NOW() AT TIME ZONE 'America/Sao_Paulo'))`,
     [
       "success",
       `Sorteio '${raffle.title}' gerado com sucesso!`,
