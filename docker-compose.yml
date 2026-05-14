@@ -38,6 +38,7 @@ services:
       AWS_REGION: sa-east-1
       AWS_ACCESS_KEY_ID: fake
       AWS_SECRET_ACCESS_KEY: fake
+      AWS_ACCOUNT_ID: "000000000000"
       IS_OFFLINE: "true"
       SERVERLESS_ACCESS_KEY: ${SERVERLESS_ACCESS_KEY}
     depends_on:
