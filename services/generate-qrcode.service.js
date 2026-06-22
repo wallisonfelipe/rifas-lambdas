@@ -2,6 +2,7 @@ const { PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../lib/dynamo");
 const { loginCodePay, generatePix } = require("../lib/gateway-codepay");
 const { loginPay2M, generatePixPay2M } = require("../lib/gateway-pay2m");
+const { generatePixUnupay } = require("../lib/gateway-unupay");
 const { pixToQrBase64 } = require("../lib/qrcode");
 const { randomUUID } = require("crypto");
 
@@ -58,7 +59,17 @@ async function executeGenerate(detail) {
   if (gateway === "pay2m") {
     const tokenOrCreds = detail.pay2mTokenOrCreds || null;
     pixResp = await generateWithPay2M({ tokenOrCreds, externalId, value, expirationSeconds });
-  } else {
+  }
+  else if (gateway === "unupay") {
+    pixResp = await generatePixUnupay({
+      tokenOrCreds: detail.unupayTokenOrCreds || null,
+      externalId,
+      value,
+      expirationSeconds,
+      paymentInfo,
+    });
+  }
+  else {
     const tokenOrCreds = detail.codepayTokenOrCreds || null;
     pixResp = await generateWithCodepay({ tokenOrCreds, externalId, value, expirationSeconds });
   }
