@@ -39,12 +39,27 @@ const validators = {
       throw new ValidationError("Parametros faltando!");
     }
   },
+  unupay(payload) {
+    const { id, status, amount } = payload?.data || {};
+    if (!id || !status || amount === undefined || amount === null) {
+      throw new ValidationError("Parametros faltando!");
+    }
+  },
 };
 
 const externalIdResolvers = {
   codepay: (p) => p?.externalId,
   pagstar: (p) => p?.endToEndId,
   pay2m: (p) => p?.message?.external_reference,
+  unupay: (p) => p?.data?.id,
+};
+
+// Gateways que disparam o webhook em mais de um status (ex: unupay envia na criacao
+// do pagamento com "waiting_payment" e novamente no pagamento com "paid"). Apenas
+// eventos confirmados sao repassados ao destino; os demais sao descartados aqui para
+// evitar retries e alertas de falha desnecessarios.
+const relayStatusGuards = {
+  unupay: (p) => String(p?.data?.status ?? "").toLowerCase() === "paid",
 };
 
 function sleep(ms) {
@@ -120,6 +135,11 @@ async function processWebhook({ gateway, pathUrl, payload, requestId }) {
   }
 
   validate(payload);
+
+  const statusGuard = relayStatusGuards[gateway];
+  if (statusGuard && !statusGuard(payload)) {
+    return { requestId, message: "Webhook ignorado (status nao confirmado)" };
+  }
 
   const user = await getUser(pathUrl);
   if (!user) {
