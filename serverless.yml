@@ -169,6 +169,15 @@ functions:
           method: POST
           path: /webhook/pay2m/{pathUrl}
 
+  webhookUnupay:
+    handler: handlers/webhook-unupay.handler
+    timeout: 25
+    vpc: ${self:custom.relayVpc}
+    events:
+      - httpApi:
+          method: POST
+          path: /webhook/unupay/{pathUrl}
+
   codepayCashout:
     handler: handlers/codepay-cashout.handler
     timeout: 15
